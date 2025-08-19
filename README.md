@@ -110,7 +110,20 @@ docker run -it --rm \
   serena-dev:latest
 ```
 
-### 5. Serena-MCPの初期化
+### 5. 初回認証 (コンテナ内での初回起動時のみ)
+
+開発コンテナに接続した後、以下のコマンドを実行して各AIツールにログインします。
+ブラウザが開き、認証を求められます。
+
+```bash
+# Claude Code
+claude
+
+# Gemini CLI
+gemini
+```
+
+### 6. Serena-MCPの初期化
 
 コンテナ内で以下を実行：
 
