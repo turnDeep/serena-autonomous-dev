@@ -1,0 +1,185 @@
+version: '3.8'
+
+services:
+  # メイン開発環境
+  dev-environment:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    image: serena-autonomous-dev:latest
+    container_name: serena-dev
+    hostname: serena-dev
+    
+    # GPU設定
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    
+    # ボリューム設定
+    volumes:
+      # プロジェクトファイル
+      - .:/workspaces:cached
+      # Serena永続化
+      - serena-data:/root/.serena
+      # Gemini設定
+      - gemini-config:/root/.gemini
+      # Claude設定
+      - claude-config:/root/.claude
+      # PDFライブラリ
+      - ${HOME}/PDF:/root/PDF:ro
+      # Docker in Docker
+      - /var/run/docker.sock:/var/run/docker.sock
+      # SSH設定
+      - ${HOME}/.ssh:/root/.ssh:ro
+      # キャッシュ
+      - npm-cache:/root/.npm
+      - pip-cache:/root/.cache/pip
+      - uv-cache:/root/.cache/uv
+    
+    # 環境変数
+    environment:
+      # GPU設定
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - CUDA_VISIBLE_DEVICES=all
+      # Serena設定
+      - SERENA_AUTO_LEVEL=5
+      - SERENA_CONTEXT=ide-assistant
+      - SERENA_PROJECT_PATH=/workspaces
+      # API Keys (from host environment)
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      # 開発設定
+      - NODE_ENV=development
+      - PYTHONPATH=/workspaces
+    
+    # ネットワーク設定
+    network_mode: host
+    
+    # セキュリティ設定
+    privileged: true
+    cap_add:
+      - SYS_ADMIN
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
+      - apparmor:unconfined
+    
+    # リソース制限
+    mem_limit: 32g
+    memswap_limit: 32g
+    shm_size: 16g
+    
+    # 起動設定
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+    
+    # ヘルスチェック
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9121/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+  
+  # Serena-MCP専用サーバー（オプション）
+  serena-mcp:
+    image: ghcr.io/oraios/serena:latest
+    container_name: serena-mcp-server
+    hostname: serena-mcp
+    
+    volumes:
+      - .:/workspaces/project:cached
+      - serena-data:/root/.serena
+    
+    environment:
+      - SERENA_AUTO_LEVEL=5
+      - SERENA_CONTEXT=ide-assistant
+    
+    ports:
+      - "9121:9121"     # SSE Server
+      - "24282:24282"   # Dashboard
+    
+    command: >
+      serena start-mcp-server
+      --transport sse
+      --port 9121
+      --context ide-assistant
+      --auto-level 5
+      --project /workspaces/project
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9121/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+  
+  # Jupyter Lab（オプション）
+  jupyter:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    container_name: jupyter-lab
+    
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    
+    volumes:
+      - .:/workspaces:cached
+      - jupyter-data:/root/.jupyter
+    
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - JUPYTER_ENABLE_LAB=yes
+      - JUPYTER_TOKEN=${JUPYTER_TOKEN:-serena2024}
+    
+    ports:
+      - "8888:8888"
+    
+    command: >
+      jupyter lab
+      --ip=0.0.0.0
+      --port=8888
+      --no-browser
+      --allow-root
+      --NotebookApp.token=${JUPYTER_TOKEN:-serena2024}
+    
+    restart: unless-stopped
+    
+    depends_on:
+      - serena-mcp
+
+# ボリューム定義
+volumes:
+  serena-data:
+    driver: local
+  gemini-config:
+    driver: local
+  claude-config:
+    driver: local
+  npm-cache:
+    driver: local
+  pip-cache:
+    driver: local
+  uv-cache:
+    driver: local
+  jupyter-data:
+    driver: local
+
+# ネットワーク定義（必要に応じて）
+networks:
+  default:
+    name: serena-network
+    driver: bridge
