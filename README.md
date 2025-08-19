@@ -1,105 +1,263 @@
-# 🔺 Triforce Dev Framework 🔺
+# 🤖 Serena-MCP自律型三位一体開発環境
 
-**人間 × Claude Code × Gemini CLI = 開発効率の最大化**
+**Serena-MCP × Claude Code × Gemini CLI = 完全自律型開発**
 
-このリポジトリは、人間、Claude Code、Gemini CLIの三者が協力して開発を進めるための「三位一体開発フレームワーク」のテンプレートです。それぞれの強みを活かし、弱点を補い合うことで、より効率的で質の高い開発を目指します。
+人間の介入を最小化し、AIエージェントが自律的に協調して開発を進める次世代フレームワークです。
 
-## ✨ クイックスタート
+## 🚀 特徴
 
-1. **リポジトリをクローンまたはテンプレートとして使用:**
+- **完全自律型**: Serena-MCPが意思決定、Claudeが実装、Geminiが検証を自動実行
+- **GPU対応**: CUDA/cuDNNを活用した高速計算とML開発をサポート
+- **セマンティック理解**: LSPベースの深いコード理解と自動リファクタリング
+- **継続的最適化**: パフォーマンスとコード品質を常時監視・改善
+
+## 📋 必要要件
+
+### ハードウェア
+- **GPU**: NVIDIA GPU（Compute Capability 3.0以上）推奨
+- **メモリ**: 16GB以上推奨
+- **ストレージ**: 50GB以上の空き容量
+
+### ソフトウェア
+- **OS**: Linux（Ubuntu 20.04/22.04/24.04推奨）、Windows（WSL2）、macOS
+- **Docker**: 20.10以上
+- **NVIDIA Driver**: 580以上（GPU使用時、CUDA 13.0対応）
+- **NVIDIA Container Toolkit**（GPU使用時）
+
+## 🔧 セットアップ
+
+### 1. リポジトリのクローン
+
+```bash
+git clone https://github.com/your-org/serena-autonomous-dev.git
+cd serena-autonomous-dev
+```
+
+### 2. GPU環境の準備（GPU使用時のみ）
+
+#### Linux
+```bash
+# NVIDIA Container Toolkitのインストール
+curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+  sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+  sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+sudo apt-get update
+sudo apt-get install -y nvidia-container-toolkit
+sudo nvidia-ctk runtime configure --runtime=docker
+sudo systemctl restart docker
+
+# GPU動作確認（CUDA 13.0）
+docker run --rm --gpus all nvidia/cuda:13.0.0-base-ubuntu22.04 nvidia-smi
+```
+
+#### Windows（WSL2）
+Docker DesktopがNVIDIA Container Toolkitを自動的に含んでいるため、追加設定は不要です。
+
+### 3. 環境変数の設定
+
+```bash
+# .envファイルを作成
+cat > .env << EOF
+# API Keys
+ANTHROPIC_API_KEY=your_anthropic_key_here
+GEMINI_API_KEY=your_gemini_key_here
+
+# Jupyter Token（オプション）
+JUPYTER_TOKEN=your_secure_token_here
+
+# Serena設定
+SERENA_AUTO_LEVEL=5
+EOF
+```
+
+### 4. 開発環境の起動
+
+#### 方法A: VS Code Dev Container（推奨）
+
+1. VS Codeでプロジェクトを開く
+2. 拡張機能「Dev Containers」をインストール
+3. コマンドパレット（Ctrl+Shift+P）→「Dev Containers: Reopen in Container」
+4. 初回ビルドを待つ（5-10分程度）
+
+#### 方法B: Docker Compose
+
+```bash
+# 環境の起動
+docker-compose up -d
+
+# コンテナに接続
+docker-compose exec dev-environment bash
+
+# ログの確認
+docker-compose logs -f serena-mcp
+```
+
+#### 方法C: 直接Dockerコマンド
+
+```bash
+# イメージのビルド
+docker build -f .devcontainer/Dockerfile -t serena-dev:latest .
+
+# コンテナの起動
+docker run -it --rm \
+  --gpus all \
+  --network host \
+  -v $(pwd):/workspaces \
+  -v ~/.ssh:/root/.ssh:ro \
+  -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
+  -e GEMINI_API_KEY=$GEMINI_API_KEY \
+  serena-dev:latest
+```
+
+### 5. Serena-MCPの初期化
+
+コンテナ内で以下を実行：
+
+```bash
+# プロジェクトのアクティベート
+serena activate_project /workspaces
+
+# 動作確認
+serena list_tools
+serena find_symbols "function"
+```
+
+## 🎮 使い方
+
+### 基本的な開発フロー
+
+1. **要件を伝える**
    ```bash
-   git clone https://github.com/turnDeep/triforce-dev.git
-   # または GitHub UI で "Use this template" をクリック
+   claude
+   > ユーザー認証機能を実装して
    ```
 
-2. **Dev Containerで開く (推奨):**
-   - VS Codeでプロジェクトを開きます。
-   - 右下に表示される「Reopen in Container」通知をクリック、またはコマンドパレット (Cmd/Ctrl+Shift+P) から「Dev Containers: Reopen in Container」を選択。
-   - 初回起動時、必要なツール (`@anthropic-ai/claude-code`, `@google/gemini-cli`) が自動インストールされ、`make setup`が実行されます。
+2. **自動実行される処理**
+   - Serena-MCPがコードベースを分析
+   - Claudeが実装計画を策定
+   - Geminiが技術調査を実施
+   - 実装とテストが自動実行
 
-3. **手動セットアップ (Dev Containerを使用しない場合):**
-   - 詳細は [PROJECT_SETUP.md](PROJECT_SETUP.md) を参照してください。
-   - 簡単に言うと:
-     ```bash
-     npm install -g @anthropic-ai/claude-code @google/gemini-cli
-     make setup  # または PROJECT_SETUP.md 内の個別コマンド実行
-     ```
+3. **結果の確認**
+   ```bash
+   # Serenaの分析結果
+   cat .serena/memories/latest_analysis.json
+   
+   # 実装されたコード
+   git diff
+   
+   # テスト結果
+   npm test
+   ```
 
-4. **ClaudeとGeminiの初期設定:**
-   - **Claude**: `memory.json.sample` を参考に `~/.claude/memory.json` を作成・編集。
-   - **Gemini**: `settings.json.sample` を参考に `~/.gemini/settings.json` を作成・編集。
-   - 初回利用時に各CLIで認証が必要です (`claude` と `gemini` をターミナルで実行)。
+### Serena-MCPコマンド
 
-5. **開発開始！**
-   - `CLAUDE.md` と `GEMINI.md` をプロジェクトに合わせてカスタマイズします。
-   - Claude Codeを起動 (`claude`) し、開発を開始します。
-   - 必要に応じて `Makefile` のコマンド (`make test`, `make lint` など) を活用します。
+```bash
+# プロジェクト管理
+serena activate_project <path>     # プロジェクト有効化
+serena list_projects               # プロジェクト一覧
+serena switch_modes <mode>         # モード切替
 
-## 🎯 フレームワークの目的
+# コード分析
+serena find_symbols <pattern>      # シンボル検索
+serena get_references <symbol>     # 参照検索
+serena analyze_dependencies        # 依存関係分析
 
-- **品質向上**: Claudeの計画・実装力とGeminiの調査・分析力を組み合わせ、人間のレビュー負荷を軽減。
-- **効率化**: 反復作業や定型的な調査をAIに任せ、人間はより創造的なタスクに集中。
-- **トークン節約**: Geminiによる事前調査でClaudeの試行錯誤を減らし、トークン消費を最適化。
-- **属人化防止**: `CLAUDE.md` や `GEMINI.md` にプロジェクト知識を集約。
+# セマンティック編集
+serena semantic_edit <target>      # セマンティック編集
+serena refactor <pattern>          # リファクタリング
+serena extract_method <code>       # メソッド抽出
+```
 
-## 🛠️ 主要ファイルとディレクトリ
+### 自動化レベルの調整
 
-- **`CLAUDE.md`**: Claude Codeへの指示書。プロジェクトの憲法。
-- **`GEMINI.md`**: Gemini CLIへの指示書 (Claude経由で利用)。プロジェクトの賢者。
-- **`.claude/commands/`**: Claude用カスタムコマンド群。魔法の呪文集。
-- **`docs/`**: 詳細ドキュメント。知恵の書。
-  - [フォルダ構造](docs/FOLDER_STRUCTURE.md)
-  - [Dev Containerセットアップ](docs/DEVCONTAINER_SETUP.md)
-  - [トラブルシューティング](docs/TROUBLESHOOTING.md)
-- **`Makefile`**: 便利なコマンド集。万能ツールナイフ。
-- **`memory.json.sample` / `settings.json.sample`**: AIツールの設定テンプレート。
+```bash
+# レベル1: 手動確認必須
+export SERENA_AUTO_LEVEL=1
 
-詳細は [フォルダ構造ガイド](docs/FOLDER_STRUCTURE.md) を参照してください。
+# レベル3: 重要な変更のみ確認
+export SERENA_AUTO_LEVEL=3
 
-## 🤖 AI連携の特徴
+# レベル5: 完全自動（デフォルト）
+export SERENA_AUTO_LEVEL=5
+```
 
-- **自動相談**: Claude Codeが必要に応じてGeminiに自動で相談
-- **段階的自動化**: レベル1〜3で自動化度合いを調整可能
-- **シームレス連携**: ユーザーは意識せずに三位一体開発を体験
+## 📊 モニタリング
 
-詳細は [Gemini連携ガイド](docs/GEMINI_INTEGRATION.md) を参照。
+### Serena-MCPダッシュボード
 
-## 🤝 三位一体の連携フロー (例)
+ブラウザで `http://localhost:24282/dashboard` にアクセス
 
-1. **人間**: Claudeに開発要件を伝える (例: 「ユーザー認証機能を実装して」)。
-2. **Claude**:
-   - `GEMINI.md` の内容と人間の指示を元に、Geminiに調査を依頼 (例: 「Next.jsでの最適な認証方法は？」)。
-   - Geminiの回答を参考に実装計画を立案。
-3. **Gemini**: 調査結果や複数の選択肢、注意点などをClaudeに提供。
-4. **Claude**: 人間に計画を提示し、承認を得てから実装開始。
-5. **人間**: 実装計画をレビュー・承認。
-6. **Claude**: コーディング。適宜Geminiに相談 (例: 「このエラーの原因は？」)。
-7. **人間/Claude**: `/project:review-with-gemini`のようなカスタムコマンドでGeminiにコードレビューを依頼。
-8. **Gemini**: コードの問題点や改善案を指摘。
-9. **Claude/人間**: レビュー結果を元に修正。
-10. **人間**: 最終確認とマージ。
+### ログの確認
 
-## 🔧 カスタマイズ
+```bash
+# Serena-MCPサーバーログ
+tail -f /tmp/serena/server.log
 
-- **`CLAUDE.md` / `GEMINI.md`**: あなたのプロジェクトに合わせて、これらのファイルを徹底的にカスタマイズしてください。これがフレームワーク活用の鍵です。
-- **`.claude/commands/`**: プロジェクト固有の便利なコマンドを追加・編集。
-- **`Makefile`**: チームでよく使うコマンドを登録。
+# Claude実行ログ
+claude logs
 
-## 💡 ヒント
+# Gemini実行ログ
+gemini logs
+```
 
-- **具体的指示**: AIには曖昧な指示より具体的な指示が有効です。
-- **役割分担の明確化**: `CLAUDE.md`と`GEMINI.md`で各AIの役割を明確に定義しましょう。
-- **反復的改善**: 一度で完璧を目指さず、AIとの対話を通じて徐々に成果物を改善していくのがコツです。
-- **人間による最終判断**: AIは強力なアシスタントですが、最終的な意思決定と責任は人間が持ちます。
+### GPUモニタリング
 
-## 🙏 貢献
+```bash
+# GPU使用状況
+nvidia-smi -l 1
 
-バグ報告、機能提案、プルリクエストを歓迎します！
+# 詳細なGPU情報
+nvidia-smi -q
+```
+
+## 🔧 トラブルシューティング
+
+### GPUが認識されない
+
+```bash
+# コンテナ内でGPU確認
+nvidia-smi
+
+# Docker設定確認
+docker run --rm --gpus all nvidia/cuda:12.0-base nvidia-smi
+```
+
+### Serena-MCPが起動しない
+
+```bash
+# 手動起動
+uvx --from git+https://github.com/oraios/serena serena start-mcp-server \
+  --transport sse \
+  --port 9121 \
+  --context ide-assistant
+
+# ログ確認
+cat /tmp/serena/server.log
+```
+
+### メモリ不足
+
+```bash
+# Docker設定変更
+docker update --memory="16g" --memory-swap="32g" serena-dev
+```
+
+## 📚 ドキュメント
+
+- [CLAUDE.md](CLAUDE.md) - Claude Code設定
+- [GEMINI.md](GEMINI.md) - Gemini CLI設定
+- [Serena公式ドキュメント](https://github.com/oraios/serena)
+
+## 🤝 貢献
+
+プルリクエストや課題報告を歓迎します！
 
 ## 📜 ライセンス
 
-このプロジェクトは [MITライセンス](LICENSE) の下で公開されています。
+MIT License
 
 ---
 
-**このフレームワークが、あなたの開発プロジェクトを次のレベルへと導く一助となれば幸いです！** 🚀
+**自律型開発の新時代へようこそ！** 🚀
