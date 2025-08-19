@@ -1,170 +1,165 @@
-{
-  "name": "Serena-MCP Autonomous Dev Container with GPU",
-  "version": "2.0.0",
-  
-  // GPU対応のCUDA 13.0ベースイメージを使用（最新安定版）
-  "image": "nvidia/cuda:13.0.0-cudnn-devel-ubuntu22.04",
-  
-  // GPU有効化とネットワーク設定
-  "runArgs": [
-    "--gpus=all",
-    "--network=host",
-    "-v", "/var/run/docker.sock:/var/run/docker.sock",
-    "--privileged=true",
-    "--cap-add=SYS_ADMIN",
-    "--security-opt", "seccomp=unconfined"
-  ],
-  
-  // GPU環境変数の設定
-  "remoteEnv": {
-    "PATH": "${containerEnv:PATH}:/usr/local/cuda/bin",
-    "LD_LIBRARY_PATH": "$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/usr/local/cuda/extras/CUPTI/lib64",
-    "XLA_FLAGS": "--xla_gpu_cuda_data_dir=/usr/local/cuda",
-    "NVIDIA_VISIBLE_DEVICES": "all",
-    "NVIDIA_DRIVER_CAPABILITIES": "compute,utility",
-    "CUDA_VISIBLE_DEVICES": "all",
-    
-    // Serena-MCP設定
-    "SERENA_AUTO_LEVEL": "5",
-    "SERENA_CONTEXT": "ide-assistant",
-    "SERENA_PROJECT_PATH": "/workspaces/${localWorkspaceFolderBasename}",
-    
-    // APIキー（ローカル環境から継承）
-    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}",
-    "GEMINI_API_KEY": "${localEnv:GEMINI_API_KEY}"
-  },
-  
-  // 初期化コマンド（順次実行）
-  "onCreateCommand": {
-    "install-base": "apt-get update && apt-get install -y curl git build-essential python3 python3-pip nodejs npm",
-    "install-uv": "curl -LsSf https://astral.sh/uv/install.sh | sh",
-    "install-cli-tools": "npm install -g @anthropic-ai/claude-code @google/gemini-cli"
-  },
-  
-  // プロジェクトセットアップ
-  "postCreateCommand": {
-    "verify-gpu": "nvidia-smi",
-    "setup-project": "make setup || echo 'No Makefile found'",
-    "init-serena": "uvx --from git+https://github.com/oraios/serena serena activate_project ${containerWorkspaceFolder}",
-    "create-directories": "mkdir -p ~/.serena ~/.gemini ~/.claude/commands ~/PDF",
-    "set-permissions": "chmod -R 755 ~/.serena ~/.gemini ~/.claude ~/PDF"
-  },
-  
-  // 起動時コマンド
-  "postStartCommand": {
-    "start-serena": "nohup uvx --from git+https://github.com/oraios/serena serena start-mcp-server --transport sse --port 9121 --context ide-assistant --auto-level 5 > /tmp/serena.log 2>&1 &",
-    "show-status": "echo '🤖 Serena-MCP Server running on http://localhost:9121/sse' && echo '🎮 GPU: ' && nvidia-smi --query-gpu=name --format=csv,noheader"
-  },
-  
-  // VS Code設定
-  "customizations": {
-    "vscode": {
-      "settings": {
-        "terminal.integrated.defaultProfile.linux": "bash",
-        "python.defaultInterpreterPath": "/usr/bin/python3",
-        
-        // MCP Server設定
-        "mcp.servers": {
-          "serena": {
-            "command": "uvx",
-            "args": [
-              "--from",
-              "git+https://github.com/oraios/serena",
-              "serena",
-              "start-mcp-server",
-              "--transport", "stdio",
-              "--context", "ide-assistant",
-              "--project", "${workspaceFolder}",
-              "--auto-level", "5"
-            ]
-          }
-        },
-        
-        // Claude Code設定
-        "claude.mcpServers": {
-          "serena": {
-            "enabled": true,
-            "autoStart": true
-          }
-        }
-      },
-      
-      "extensions": [
-        // 開発基本ツール
-        "dbaeumer.vscode-eslint",
-        "esbenp.prettier-vscode",
-        "ms-python.python",
-        "ms-python.vscode-pylance",
-        
-        // AI/ML関連
-        "ms-toolsai.jupyter",
-        "ms-toolsai.vscode-jupyter-cell-tags",
-        "nvidia.nsight-vscode-edition",
-        
-        // Git/GitHub
-        "GitHub.copilot",
-        "GitHub.copilot-chat",
-        "eamodio.gitlens",
-        
-        // コンテナ関連
-        "ms-azuretools.vscode-docker",
-        "ms-vscode-remote.remote-containers"
-      ]
-    }
-  },
-  
-  // ユーザー設定
-  "remoteUser": "root",
-  
-  // 追加機能
-  "features": {
-    "ghcr.io/devcontainers/features/git:1": {},
-    "ghcr.io/devcontainers/features/github-cli:1": {},
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {
-      "moby": true,
-      "installDockerBuildx": true
-    },
-    "ghcr.io/devcontainers/features/python:1": {
-      "version": "3.11"
-    },
-    "ghcr.io/devcontainers/features/node:1": {
-      "version": "20"
-    }
-  },
-  
-  // ポートフォワーディング
-  "forwardPorts": [
-    9121,  // Serena-MCP SSE Server
-    3000,  // 開発サーバー（Next.js等）
-    8080,  // APIサーバー
-    5173,  // Vite
-    8888   // Jupyter
-  ],
-  
-  // ホスト要件
-  "hostRequirements": {
-    "gpu": "optional",
-    "cpus": 4,
-    "memory": "8gb",
-    "storage": "32gb"
-  },
-  
-  // マウント設定
-  "mounts": [
-    // PDFライブラリをマウント
-    "source=${localEnv:HOME}/PDF,target=/root/PDF,type=bind,consistency=cached",
-    // Serena設定を永続化
-    "source=${localEnv:HOME}/.serena,target=/root/.serena,type=bind,consistency=cached",
-    // SSH設定
-    "source=${localEnv:HOME}/.ssh,target=/root/.ssh,type=bind,readonly"
-  ],
-  
-  // 待機設定
-  "waitFor": "postStartCommand",
-  
-  // 更新時の動作
-  "updateContentCommand": "echo 'Checking for updates...' && npm update -g @anthropic-ai/claude-code @google/gemini-cli",
-  
-  // シャットダウン時の処理
-  "shutdownAction": "stopContainer"
-}
+# GPU対応の自律型開発環境
+# CUDA 13.0 + cuDNN + Ubuntu 22.04 LTS (最新安定版)
+FROM nvidia/cuda:13.0.0-cudnn-devel-ubuntu22.04
+
+# 環境変数設定
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Asia/Tokyo
+ENV PYTHONUNBUFFERED=1
+ENV NODE_VERSION=20
+ENV CUDA_HOME=/usr/local/cuda
+ENV PATH=${CUDA_HOME}/bin:${PATH}
+ENV LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
+
+# CUDAの設定
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+ENV XLA_FLAGS=--xla_gpu_cuda_data_dir=/usr/local/cuda
+
+# Serena-MCP設定
+ENV SERENA_AUTO_LEVEL=5
+ENV SERENA_CONTEXT=ide-assistant
+
+# 基本パッケージのインストール
+RUN apt-get update && apt-get install -y \
+    # 基本ツール
+    curl \
+    wget \
+    git \
+    vim \
+    nano \
+    htop \
+    tmux \
+    # ビルドツール
+    build-essential \
+    cmake \
+    pkg-config \
+    # Python関連
+    python3 \
+    python3-pip \
+    python3-dev \
+    python3-venv \
+    # システムライブラリ
+    libssl-dev \
+    libffi-dev \
+    libbz2-dev \
+    libreadline-dev \
+    libsqlite3-dev \
+    libncurses5-dev \
+    libncursesw5-dev \
+    libgdbm-dev \
+    libnss3-dev \
+    libxml2-dev \
+    libxmlsec1-dev \
+    # GPU/ML関連
+    nvidia-cuda-toolkit \
+    libnccl2 \
+    libnccl-dev \
+    # その他
+    software-properties-common \
+    apt-transport-https \
+    ca-certificates \
+    gnupg \
+    lsb-release \
+    && rm -rf /var/lib/apt/lists/*
+
+# Node.jsのインストール（NodeSource経由）
+RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - \
+    && apt-get install -y nodejs \
+    && npm install -g npm@latest
+
+# Pythonパッケージのインストール（CUDA 13.0対応版）
+RUN pip3 install --upgrade pip setuptools wheel \
+    && pip3 install \
+    numpy \
+    pandas \
+    scipy \
+    matplotlib \
+    jupyter \
+    ipykernel \
+    torch \
+    torchvision \
+    torchaudio \
+    tensorflow \
+    transformers \
+    accelerate \
+    datasets \
+    tokenizers \
+    sentencepiece
+
+# uvのインストール（Serena-MCP用）
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# グローバルnpmパッケージのインストール
+RUN npm install -g \
+    @anthropic-ai/claude-code \
+    @google/gemini-cli \
+    typescript \
+    ts-node \
+    nodemon \
+    prettier \
+    eslint
+
+# Serena-MCPのプリインストール（キャッシュ用）
+RUN uvx --from git+https://github.com/oraios/serena serena --version || true
+
+# 作業ディレクトリの作成
+WORKDIR /workspaces
+
+# 必要なディレクトリの作成
+RUN mkdir -p \
+    /root/.serena \
+    /root/.gemini \
+    /root/.claude/commands \
+    /root/PDF \
+    /tmp/serena
+
+# デフォルト設定ファイルのコピー（存在する場合）
+COPY --chown=root:root .serena/serena_config.yml* /root/.serena/
+COPY --chown=root:root .gemini/settings.json* /root/.gemini/
+COPY --chown=root:root .claude/memory.json* /root/.claude/
+
+# Makefileのコピー（存在する場合）
+COPY --chown=root:root Makefile* /workspaces/
+
+# エントリーポイントスクリプト
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+# GPUの確認\n\
+echo "🎮 Checking GPU availability..."\n\
+nvidia-smi || echo "⚠️ GPU not available"\n\
+\n\
+# Serena-MCPサーバーの起動\n\
+echo "🤖 Starting Serena-MCP server..."\n\
+nohup uvx --from git+https://github.com/oraios/serena serena start-mcp-server \\\n\
+    --transport sse \\\n\
+    --port 9121 \\\n\
+    --context ide-assistant \\\n\
+    --auto-level 5 \\\n\
+    > /tmp/serena/server.log 2>&1 &\n\
+\n\
+echo "✅ Serena-MCP server started on http://localhost:9121/sse"\n\
+echo "📝 Logs available at /tmp/serena/server.log"\n\
+\n\
+# プロジェクトの初期化（存在する場合）\n\
+if [ -f "/workspaces/Makefile" ]; then\n\
+    echo "📦 Running project setup..."\n\
+    cd /workspaces && make setup || true\n\
+fi\n\
+\n\
+# シェルの起動\n\
+exec "$@"\n\
+' > /entrypoint.sh && chmod +x /entrypoint.sh
+
+# ヘルスチェック
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:9121/health || exit 1
+
+# ポート公開
+EXPOSE 9121 3000 8080 5173 8888
+
+# エントリーポイント
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["/bin/bash"]
