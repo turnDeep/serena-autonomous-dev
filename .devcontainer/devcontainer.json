@@ -1,9 +1,9 @@
 {
   "name": "Serena-MCP Autonomous Dev Container with GPU",
-  "version": "2.0.0",
+  "version": "2.1.0",
   
-  // GPU対応のCUDA 13.0ベースイメージを使用（最新安定版）
-  "image": "nvidia/cuda:13.0.0-cudnn-devel-ubuntu22.04",
+  // カスタムDockerfileを使用
+  "dockerFile": "Dockerfile",
   
   // GPU有効化とネットワーク設定
   "runArgs": [
@@ -17,7 +17,7 @@
   
   // GPU環境変数の設定
   "remoteEnv": {
-    "PATH": "${containerEnv:PATH}:/usr/local/cuda/bin",
+    "PATH": "${containerEnv:PATH}:/usr/local/cuda/bin:/root/.local/bin",
     "LD_LIBRARY_PATH": "$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/usr/local/cuda/extras/CUPTI/lib64",
     "XLA_FLAGS": "--xla_gpu_cuda_data_dir=/usr/local/cuda",
     "NVIDIA_VISIBLE_DEVICES": "all",
@@ -34,26 +34,28 @@
     "GEMINI_API_KEY": "${localEnv:GEMINI_API_KEY}"
   },
   
-  // 初期化コマンド（順次実行）
+  // 初期化コマンド（コンテナ作成時に一度だけ実行）
   "onCreateCommand": {
-    "install-base": "apt-get update && apt-get install -y curl git build-essential python3 python3-pip nodejs npm",
-    "install-uv": "curl -LsSf https://astral.sh/uv/install.sh | sh",
-    "install-cli-tools": "npm install -g @anthropic-ai/claude-code @google/gemini-cli"
+    "verify-tools": "echo '=== Verifying Tools ===' && which node && which npm && which python3 && which uvx || true",
+    "install-claude": "echo 'Installing Claude Code...' && npm install -g @anthropic-ai/claude-code && which claude",
+    "install-gemini": "echo 'Installing Gemini CLI...' && npm install -g @google/gemini-cli && which gemini",
+    "create-dirs": "mkdir -p ~/.serena ~/.gemini ~/.claude/commands ~/PDF /tmp/serena",
+    "show-versions": "echo '=== Installed Versions ===' && node --version && npm --version && python3 --version"
   },
   
-  // プロジェクトセットアップ
+  // プロジェクトセットアップ（作成後）
   "postCreateCommand": {
-    "verify-gpu": "nvidia-smi",
-    "setup-project": "make setup || echo 'No Makefile found'",
-    "init-serena": "uvx --from git+https://github.com/oraios/serena serena activate_project ${containerWorkspaceFolder}",
-    "create-directories": "mkdir -p ~/.serena ~/.gemini ~/.claude/commands ~/PDF",
+    "verify-gpu": "nvidia-smi --query-gpu=name,memory.total --format=csv,noheader || echo 'GPU not available'",
+    "verify-commands": "echo 'Checking commands...' && (claude --version || echo 'Claude not installed') && (gemini --version || echo 'Gemini not installed')",
+    "setup-project": "if [ -f Makefile ]; then make setup; else echo 'No Makefile found'; fi",
     "set-permissions": "chmod -R 755 ~/.serena ~/.gemini ~/.claude ~/PDF"
   },
   
-  // 起動時コマンド
+  // 起動時コマンド（コンテナ起動のたびに実行）
   "postStartCommand": {
     "start-serena": "nohup uvx --from git+https://github.com/oraios/serena serena start-mcp-server --transport sse --port 9121 --context ide-assistant --auto-level 5 > /tmp/serena.log 2>&1 &",
-    "show-status": "echo '🤖 Serena-MCP Server running on http://localhost:9121/sse' && echo '🎮 GPU: ' && nvidia-smi --query-gpu=name --format=csv,noheader"
+    "wait-for-serena": "sleep 3",
+    "show-status": "echo '🤖 Serena-MCP Server should be running on http://localhost:9121/sse' && echo '📝 Check logs at /tmp/serena.log' && echo '🎮 GPU Status:' && (nvidia-smi --query-gpu=name --format=csv,noheader || echo 'No GPU')"
   },
   
   // VS Code設定
@@ -61,6 +63,9 @@
     "vscode": {
       "settings": {
         "terminal.integrated.defaultProfile.linux": "bash",
+        "terminal.integrated.env.linux": {
+          "PATH": "${env:PATH}:/root/.local/bin"
+        },
         "python.defaultInterpreterPath": "/usr/bin/python3",
         
         // MCP Server設定
@@ -99,7 +104,6 @@
         // AI/ML関連
         "ms-toolsai.jupyter",
         "ms-toolsai.vscode-jupyter-cell-tags",
-        "nvidia.nsight-vscode-edition",
         
         // Git/GitHub
         "GitHub.copilot",
@@ -123,12 +127,6 @@
     "ghcr.io/devcontainers/features/docker-in-docker:2": {
       "moby": true,
       "installDockerBuildx": true
-    },
-    "ghcr.io/devcontainers/features/python:1": {
-      "version": "3.11"
-    },
-    "ghcr.io/devcontainers/features/node:1": {
-      "version": "20"
     }
   },
   
@@ -151,19 +149,17 @@
   
   // マウント設定
   "mounts": [
-    // PDFライブラリをマウント
+    // PDFライブラリをマウント（存在する場合のみ）
     "source=${localEnv:HOME}/PDF,target=/root/PDF,type=bind,consistency=cached",
-    // Serena設定を永続化
-    "source=${localEnv:HOME}/.serena,target=/root/.serena,type=bind,consistency=cached",
-    // SSH設定
+    // SSH設定（存在する場合のみ）
     "source=${localEnv:HOME}/.ssh,target=/root/.ssh,type=bind,readonly"
   ],
   
   // 待機設定
   "waitFor": "postStartCommand",
   
-  // 更新時の動作
-  "updateContentCommand": "echo 'Checking for updates...' && npm update -g @anthropic-ai/claude-code @google/gemini-cli",
+  // 更新時の動作（定期的に最新版を確認）
+  "updateContentCommand": "echo 'Checking for updates...' && npm list -g @anthropic-ai/claude-code @google/gemini-cli || true",
   
   // シャットダウン時の処理
   "shutdownAction": "stopContainer"
