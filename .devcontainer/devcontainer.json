@@ -53,7 +53,7 @@
   
   // 起動時コマンド（コンテナ起動のたびに実行）
   "postStartCommand": {
-    "start-serena": "nohup uvx --from git+https://github.com/oraios/serena serena start-mcp-server --transport sse --port 9121 --context ide-assistant --auto-level 5 > /tmp/serena.log 2>&1 &",
+    "start-serena": "nohup uvx --from git+https://github.com/oraios/serena serena start-mcp-server --transport sse --port 9121 --context ide-assistant > /tmp/serena.log 2>&1 &",
     "wait-for-serena": "sleep 3",
     "show-status": "echo '🤖 Serena-MCP Server should be running on http://localhost:9121/sse' && echo '📝 Check logs at /tmp/serena.log' && echo '🎮 GPU Status:' && (nvidia-smi --query-gpu=name --format=csv,noheader || echo 'No GPU')"
   },
