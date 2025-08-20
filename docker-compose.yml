@@ -29,11 +29,11 @@ services:
       - gemini-config:/root/.gemini
       # Claude設定
       - claude-config:/root/.claude
-      # PDFライブラリ
+      # PDFライブラリ（存在する場合）
       - ${HOME}/PDF:/root/PDF:ro
       # Docker in Docker
       - /var/run/docker.sock:/var/run/docker.sock
-      # SSH設定
+      # SSH設定（存在する場合）
       - ${HOME}/.ssh:/root/.ssh:ro
       # キャッシュ
       - npm-cache:/root/.npm
@@ -56,6 +56,8 @@ services:
       # 開発設定
       - NODE_ENV=development
       - PYTHONPATH=/workspaces
+      # パス設定（uvx用）
+      - PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/.local/bin
     
     # ネットワーク設定
     network_mode: host
@@ -79,6 +81,22 @@ services:
     tty: true
     restart: unless-stopped
     
+    # 起動時のコマンド（ツールのインストールを確実に実行）
+    command: |
+      bash -c "
+        echo '=== Installing missing tools ===' &&
+        if ! command -v claude &> /dev/null; then
+          echo 'Installing Claude Code...' &&
+          npm install -g @anthropic-ai/claude-code
+        fi &&
+        if ! command -v gemini &> /dev/null; then
+          echo 'Installing Gemini CLI...' &&
+          npm install -g @google/gemini-cli
+        fi &&
+        echo '=== Starting services ===' &&
+        exec /entrypoint.sh /bin/bash
+      "
+    
     # ヘルスチェック
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9121/health"]
@@ -87,11 +105,12 @@ services:
       retries: 3
       start_period: 60s
   
-  # Serena-MCP専用サーバー（オプション）
+  # Serena-MCP専用サーバー（代替オプション）
   serena-mcp:
     image: ghcr.io/oraios/serena:latest
     container_name: serena-mcp-server
     hostname: serena-mcp
+    profiles: ["standalone-serena"]  # デフォルトでは起動しない
     
     volumes:
       - .:/workspaces/project:cached
@@ -127,6 +146,7 @@ services:
       context: .
       dockerfile: .devcontainer/Dockerfile
     container_name: jupyter-lab
+    profiles: ["jupyter"]  # 明示的に指定した場合のみ起動
     
     deploy:
       resources:
@@ -144,6 +164,7 @@ services:
       - NVIDIA_VISIBLE_DEVICES=all
       - JUPYTER_ENABLE_LAB=yes
       - JUPYTER_TOKEN=${JUPYTER_TOKEN:-serena2024}
+      - PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/.local/bin
     
     ports:
       - "8888:8888"
@@ -157,9 +178,6 @@ services:
       --NotebookApp.token=${JUPYTER_TOKEN:-serena2024}
     
     restart: unless-stopped
-    
-    depends_on:
-      - serena-mcp
 
 # ボリューム定義
 volumes:
@@ -178,7 +196,7 @@ volumes:
   jupyter-data:
     driver: local
 
-# ネットワーク定義（必要に応じて）
+# ネットワーク定義
 networks:
   default:
     name: serena-network
