@@ -84,6 +84,19 @@ services:
     # 起動時のコマンド（ツールのインストールを確実に実行）
     command: |
       bash -c "
+        echo '=== Installing Serena dependencies ===' &&
+        if ! pyenv versions --bare | grep -q '^3.11.9$'; then
+          echo 'Installing Python 3.11.9...' &&
+          pyenv install 3.11.9
+        fi &&
+        if ! $HOME/.pyenv/versions/3.11.9/bin/pip list | grep -q 'serena-agent'; then
+          echo 'Installing Serena Agent...' &&
+          $HOME/.pyenv/versions/3.11.9/bin/pip install git+https://github.com/oraios/serena
+        fi &&
+        if [ ! -L /usr/local/bin/serena ]; then
+          echo 'Creating symlink for serena...' &&
+          ln -s $HOME/.pyenv/versions/3.11.9/bin/serena /usr/local/bin/serena
+        fi &&
         echo '=== Installing missing tools ===' &&
         if ! command -v claude &> /dev/null; then
           echo 'Installing Claude Code...' &&
