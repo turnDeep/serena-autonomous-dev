@@ -129,13 +129,8 @@ RUN echo "Pre-loading Serena-MCP..." && \
     (timeout 10 uvx --from git+https://github.com/oraios/serena serena --version || true) && \
     echo "Serena-MCP pre-load complete"
 
-# デフォルト設定ファイルのコピー（ビルドコンテキストはプロジェクトルート）
-# 存在するファイルのみコピー（条件付き）
-COPY .serena/serena_config.y* /tmp/serena-config/ 2>/dev/null || true
-COPY .gemini/settings.json /tmp/gemini-config/ 2>/dev/null || true
-COPY .claude/memory.json /tmp/claude-config/ 2>/dev/null || true
-
 # 設定ファイルを適切な場所に移動（存在する場合のみ）
+# Note: Config files are now copied via postCreateCommand in devcontainer.json
 RUN if [ -d /tmp/serena-config ] && [ "$(ls -A /tmp/serena-config)" ]; then \
         cp /tmp/serena-config/* /root/.serena/ 2>/dev/null || true; \
         rm -rf /tmp/serena-config; \
@@ -153,7 +148,7 @@ RUN if [ -d /tmp/serena-config ] && [ "$(ls -A /tmp/serena-config)" ]; then \
 # ビルド時にはスキップし、postCreateCommandでコピーする
 
 # Makefileのコピー（存在する場合）
-COPY Makefil[e] /workspaces/ 2>/dev/null || true
+# Note: Makefile is now copied via postCreateCommand in devcontainer.json
 
 # エントリーポイントスクリプト
 RUN echo '#!/bin/bash\n\
