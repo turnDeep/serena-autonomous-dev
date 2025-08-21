@@ -156,8 +156,6 @@
   
   // マウント設定
   "mounts": [
-    // PDFライブラリをマウント（存在する場合のみ）
-    "source=${localEnv:HOME}/PDF,target=/root/PDF,type=bind,consistency=cached",
     // SSH設定（存在する場合のみ）
     "source=${localEnv:HOME}/.ssh,target=/root/.ssh,type=bind,readonly"
   ],
