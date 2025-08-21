@@ -51,7 +51,7 @@ RUN apt-get update && apt-get install -y \
     libnss3-dev \
     libxml2-dev \
     libxmlsec1-dev \
-    # GPU/ML関連（nvidia-cuda-toolkitは削除 - ベースイメージに含まれている）
+    # GPU/ML関連
     libnccl2 \
     libnccl-dev \
     # その他
@@ -129,34 +129,31 @@ RUN echo "Pre-loading Serena-MCP..." && \
     (timeout 10 uvx --from git+https://github.com/oraios/serena serena --version || true) && \
     echo "Serena-MCP pre-load complete"
 
-# デフォルト設定ファイルのコピー（条件付きコピーのため、RUNコマンドを使用）
-# 存在するファイルのみコピー
-RUN if [ -f .serena/serena_config.yml ]; then \
-        cp .serena/serena_config.yml /root/.serena/; \
+# デフォルト設定ファイルのコピー（ビルドコンテキストはプロジェクトルート）
+# 存在するファイルのみコピー（条件付き）
+COPY .serena/serena_config.y* /tmp/serena-config/ 2>/dev/null || true
+COPY .gemini/settings.json /tmp/gemini-config/ 2>/dev/null || true
+COPY .claude/memory.json /tmp/claude-config/ 2>/dev/null || true
+
+# 設定ファイルを適切な場所に移動（存在する場合のみ）
+RUN if [ -d /tmp/serena-config ] && [ "$(ls -A /tmp/serena-config)" ]; then \
+        cp /tmp/serena-config/* /root/.serena/ 2>/dev/null || true; \
+        rm -rf /tmp/serena-config; \
     fi && \
-    if [ -f .serena/serena_config.yaml ]; then \
-        cp .serena/serena_config.yaml /root/.serena/; \
-    fi
-
-RUN if [ -f .gemini/settings.json ]; then \
-        cp .gemini/settings.json /root/.gemini/; \
-    fi
-
-RUN if [ -f .claude/memory.json ]; then \
-        cp .claude/memory.json /root/.claude/; \
+    if [ -d /tmp/gemini-config ] && [ "$(ls -A /tmp/gemini-config)" ]; then \
+        cp /tmp/gemini-config/* /root/.gemini/ 2>/dev/null || true; \
+        rm -rf /tmp/gemini-config; \
+    fi && \
+    if [ -d /tmp/claude-config ] && [ "$(ls -A /tmp/claude-config)" ]; then \
+        cp /tmp/claude-config/* /root/.claude/ 2>/dev/null || true; \
+        rm -rf /tmp/claude-config; \
     fi
 
 # コマンドファイルのコピー（ディレクトリが存在する場合のみ）
-# 注：ビルドを成功させるには、プロジェクトルートに .claude/commands/ ディレクトリが存在する必要があります（空でも構いません）。
-COPY ../.claude/commands/ /tmp/claude-commands/
-RUN if [ -d /tmp/claude-commands ]; then \
-        cp -r /tmp/claude-commands/* /root/.claude/commands/ 2>/dev/null || true; \
-        rm -rf /tmp/claude-commands; \
-    fi
+# ビルド時にはスキップし、postCreateCommandでコピーする
 
 # Makefileのコピー（存在する場合）
-# 注：ビルドを成功させるには、プロジェクトルートに Makefile が存在する必要があります。
-COPY ../Makefile /workspaces/
+COPY Makefil[e] /workspaces/ 2>/dev/null || true
 
 # エントリーポイントスクリプト
 RUN echo '#!/bin/bash\n\
