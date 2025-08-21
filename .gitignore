@@ -1,18 +1,81 @@
 # 三位一体開発関連
-.claude/
-!.claude/commands/
+.claude/memory.json
 .gemini/settings.json
+.serena/memories/
+.serena/cache/
 *.log
+/tmp/
 
 # 個人設定
+.env
 .env.local
 .env.*.local
 
 # 一時ファイル
-/tmp/
 *.tmp
 *.cache
+*.swp
+*.swo
+*~
 
-# IDEファイル（既に含まれている場合は不要）
+# IDEファイル
 .vscode/
 .idea/
+*.iml
+.DS_Store
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.npm
+.yarn-integrity
+
+# TypeScript
+*.tsbuildinfo
+dist/
+build/
+out/
+
+# Next.js
+.next/
+out/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Docker
+.dockerignore
+
+# OS
+Thumbs.db
+desktop.ini
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Test coverage
+coverage/
+*.lcov
+.nyc_output/
+
+# Build artifacts
+*.log
+*.pid
+*.seed
+*.pid.lock
