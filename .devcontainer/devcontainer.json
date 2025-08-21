@@ -2,8 +2,11 @@
   "name": "Serena-MCP Autonomous Dev Container with GPU",
   "version": "2.1.0",
   
-  // カスタムDockerfileを使用
-  "dockerFile": "Dockerfile",
+  // カスタムDockerfileを使用（ビルドコンテキストをプロジェクトルートに設定）
+  "build": {
+    "dockerfile": ".devcontainer/Dockerfile",
+    "context": ".."
+  },
   
   // GPU有効化とネットワーク設定
   "runArgs": [
@@ -45,9 +48,11 @@
   
   // プロジェクトセットアップ（作成後）
   "postCreateCommand": {
+    "copy-claude-commands": "if [ -d /workspaces/${localWorkspaceFolderBasename}/.claude/commands ]; then cp -r /workspaces/${localWorkspaceFolderBasename}/.claude/commands/* ~/.claude/commands/ 2>/dev/null || true; fi",
+    "copy-configs": "if [ -f /workspaces/${localWorkspaceFolderBasename}/.claude/memory.json ]; then cp /workspaces/${localWorkspaceFolderBasename}/.claude/memory.json ~/.claude/; fi",
     "verify-gpu": "nvidia-smi --query-gpu=name,memory.total --format=csv,noheader || echo 'GPU not available'",
     "verify-commands": "echo 'Checking commands...' && (claude --version || echo 'Claude not installed') && (gemini --version || echo 'Gemini not installed')",
-    "setup-project": "if [ -f Makefile ]; then make setup; else echo 'No Makefile found'; fi",
+    "setup-project": "if [ -f /workspaces/${localWorkspaceFolderBasename}/Makefile ]; then cd /workspaces/${localWorkspaceFolderBasename} && make setup; else echo 'No Makefile found'; fi",
     "set-permissions": "chmod -R 755 ~/.serena ~/.gemini ~/.claude ~/PDF"
   },
   
