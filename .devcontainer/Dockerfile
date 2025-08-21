@@ -147,15 +147,16 @@ RUN if [ -f .claude/memory.json ]; then \
     fi
 
 # コマンドファイルのコピー（ディレクトリが存在する場合のみ）
-# マルチステージビルドを使わずに、シンプルな方法で対処
-COPY .claude/commands/ /tmp/claude-commands/ || echo "No .claude/commands directory to copy"
+# 注：ビルドを成功させるには、プロジェクトルートに .claude/commands/ ディレクトリが存在する必要があります（空でも構いません）。
+COPY ../.claude/commands/ /tmp/claude-commands/
 RUN if [ -d /tmp/claude-commands ]; then \
         cp -r /tmp/claude-commands/* /root/.claude/commands/ 2>/dev/null || true; \
         rm -rf /tmp/claude-commands; \
     fi
 
-# Makefileのコピー（存在する場合のみ、同様の方法で対処）
-COPY Makefil[e] /workspaces/ || echo "No Makefile to copy"
+# Makefileのコピー（存在する場合）
+# 注：ビルドを成功させるには、プロジェクトルートに Makefile が存在する必要があります。
+COPY ../Makefile /workspaces/
 
 # エントリーポイントスクリプト
 RUN echo '#!/bin/bash\n\
