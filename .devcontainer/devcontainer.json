@@ -154,12 +154,6 @@
     "storage": "32gb"
   },
   
-  // マウント設定
-  "mounts": [
-    // SSH設定（存在する場合のみ）
-    "source=${localEnv:HOME}/.ssh,target=/root/.ssh,type=bind,readonly"
-  ],
-  
   // 待機設定
   "waitFor": "postStartCommand",
   
