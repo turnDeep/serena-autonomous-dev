@@ -129,14 +129,33 @@ RUN echo "Pre-loading Serena-MCP..." && \
     (timeout 10 uvx --from git+https://github.com/oraios/serena serena --version || true) && \
     echo "Serena-MCP pre-load complete"
 
-# デフォルト設定ファイルのコピー（存在する場合）
-COPY --chown=root:root .serena/serena_config.yml* /root/.serena/
-COPY --chown=root:root .gemini/settings.json* /root/.gemini/
-COPY --chown=root:root .claude/memory.json* /root/.claude/
-COPY --chown=root:root .claude/commands/* /root/.claude/commands/ 2>/dev/null || true
+# デフォルト設定ファイルのコピー（条件付きコピーのため、RUNコマンドを使用）
+# 存在するファイルのみコピー
+RUN if [ -f .serena/serena_config.yml ]; then \
+        cp .serena/serena_config.yml /root/.serena/; \
+    fi && \
+    if [ -f .serena/serena_config.yaml ]; then \
+        cp .serena/serena_config.yaml /root/.serena/; \
+    fi
 
-# Makefileのコピー（存在する場合）
-COPY --chown=root:root Makefile* /workspaces/
+RUN if [ -f .gemini/settings.json ]; then \
+        cp .gemini/settings.json /root/.gemini/; \
+    fi
+
+RUN if [ -f .claude/memory.json ]; then \
+        cp .claude/memory.json /root/.claude/; \
+    fi
+
+# コマンドファイルのコピー（ディレクトリが存在する場合のみ）
+# マルチステージビルドを使わずに、シンプルな方法で対処
+COPY .claude/commands/ /tmp/claude-commands/ || echo "No .claude/commands directory to copy"
+RUN if [ -d /tmp/claude-commands ]; then \
+        cp -r /tmp/claude-commands/* /root/.claude/commands/ 2>/dev/null || true; \
+        rm -rf /tmp/claude-commands; \
+    fi
+
+# Makefileのコピー（存在する場合のみ、同様の方法で対処）
+COPY Makefil[e] /workspaces/ || echo "No Makefile to copy"
 
 # エントリーポイントスクリプト
 RUN echo '#!/bin/bash\n\
