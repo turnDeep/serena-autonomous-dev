@@ -17,6 +17,9 @@
     "--cap-add=SYS_ADMIN",
     "--security-opt", "seccomp=unconfined"
   ],
+
+  // 自動マウントを無効化
+  "mounts": [],
   
   // GPU環境変数の設定
   "remoteEnv": {
@@ -35,15 +38,6 @@
     // APIキー（ローカル環境から継承）
     "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}",
     "GEMINI_API_KEY": "${localEnv:GEMINI_API_KEY}"
-  },
-  
-  // 初期化コマンド（コンテナ作成時に一度だけ実行）
-  "onCreateCommand": {
-    "verify-tools": "echo '=== Verifying Tools ===' && which node && which npm && which python3 && which uvx || true",
-    "install-claude": "echo 'Installing Claude Code...' && npm install -g @anthropic-ai/claude-code && which claude",
-    "install-gemini": "echo 'Installing Gemini CLI...' && npm install -g @google/gemini-cli && which gemini",
-    "create-dirs": "mkdir -p ~/.serena ~/.gemini ~/.claude/commands ~/PDF /tmp/serena",
-    "show-versions": "echo '=== Installed Versions ===' && node --version && npm --version && python3 --version"
   },
   
   // プロジェクトセットアップ（作成後）
@@ -70,9 +64,6 @@
     "vscode": {
       "settings": {
         "terminal.integrated.defaultProfile.linux": "bash",
-        "terminal.integrated.env.linux": {
-          "PATH": "${env:PATH}:/root/.local/bin"
-        },
         "python.defaultInterpreterPath": "/usr/bin/python3",
         
         // MCP Server設定
@@ -126,14 +117,6 @@
   
   // ユーザー設定
   "remoteUser": "root",
-  
-  // 追加機能
-  "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {
-      "moby": true,
-      "installDockerBuildx": true
-    }
-  },
   
   // ポートフォワーディング
   "forwardPorts": [
