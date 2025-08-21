@@ -4,7 +4,7 @@
   
   // カスタムDockerfileを使用（ビルドコンテキストをプロジェクトルートに設定）
   "build": {
-    "dockerfile": ".devcontainer/Dockerfile",
+    "dockerfile": "Dockerfile",
     "context": ".."
   },
   
