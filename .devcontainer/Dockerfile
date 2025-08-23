@@ -1,6 +1,6 @@
 # GPU対応の自律型開発環境
-# CUDA 13.0 + cuDNN + Ubuntu 22.04 LTS (最新安定版)
-FROM nvidia/cuda:13.0.0-cudnn-devel-ubuntu22.04
+# CUDA 12.8 + cuDNN + Ubuntu 22.04 LTS (最新安定版)
+FROM nvidia/cuda:12.8.0-cudnn-devel-ubuntu22.04
 
 # 環境変数設定
 ENV DEBIAN_FRONTEND=noninteractive
