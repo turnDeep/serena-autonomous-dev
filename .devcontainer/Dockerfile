@@ -21,7 +21,7 @@ ENV SERENA_AUTO_LEVEL=5
 ENV SERENA_CONTEXT=ide-assistant
 
 # 基本パッケージのインストール
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --allow-change-held-packages \
     # 基本ツール
     curl \
     wget \
